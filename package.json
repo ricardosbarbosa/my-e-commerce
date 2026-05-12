@@ -5,15 +5,18 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "seed:firestore": "node scripts/seedFirestore.mjs"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
     "firebase": "latest",
     "firebase-admin": "latest",
     "next": "latest",
     "playwright": "^1.60.0",
     "react": "latest",
     "react-dom": "latest",
-    "stripe": "latest"
+    "stripe": "latest",
+    "tailwindcss": "^4.3.0"
   }
 }

@@ -14,9 +14,13 @@ service cloud.firestore {
       return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
+    function safeInitialUser() {
+      return !request.resource.data.keys().hasAny(["role"]) || request.resource.data.role == "customer";
+    }
+
     match /users/{userId} {
       allow read, update: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) && safeInitialUser();
     }
 
     match /products/{productId} {
