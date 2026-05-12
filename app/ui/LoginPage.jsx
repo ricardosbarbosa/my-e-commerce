@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
   sendPasswordResetEmail,
   setPersistence,
+  signInWithPopup,
   signInWithEmailAndPassword,
   signOut,
   updateProfile
@@ -21,6 +23,8 @@ function authMessage(error) {
     "auth/invalid-credential": "Email or password is not correct.",
     "auth/invalid-email": "Use a valid email address.",
     "auth/missing-password": "Enter a password.",
+    "auth/network-request-failed": "Network request failed. Check the connection and try again.",
+    "auth/operation-not-allowed": "Email and password authentication is not enabled in Firebase.",
     "auth/weak-password": "Use at least six characters for the password.",
     "auth/too-many-requests": "Too many attempts. Try again later.",
     "auth/user-not-found": "No account was found for that email."
@@ -32,6 +36,10 @@ function authMessage(error) {
 function displayNameFor(user) {
   return user?.displayName || user?.email || "Customer";
 }
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope("profile");
+googleProvider.addScope("email");
 
 export default function LoginPage() {
   const [mode, setMode] = useState("signin");
@@ -68,6 +76,7 @@ export default function LoginPage() {
         await signInWithEmailAndPassword(auth, email, password);
         setStatus({ kind: "success", message: "Signed in. Your cart and orders are ready." });
       }
+      window.location.assign("/");
     } catch (error) {
       setStatus({ kind: "error", message: authMessage(error) });
     } finally {
@@ -83,8 +92,30 @@ export default function LoginPage() {
 
     setBusy(true);
     try {
-      await sendPasswordResetEmail(auth, email);
-      setStatus({ kind: "success", message: "Password reset email sent." });
+      await sendPasswordResetEmail(auth, email, {
+        url: `${window.location.origin}/login?email=${encodeURIComponent(email)}`,
+        handleCodeInApp: false
+      });
+      setStatus({
+        kind: "success",
+        message: "If this email has a password account, Firebase will send a reset link. Check inbox and spam."
+      });
+    } catch (error) {
+      setStatus({ kind: "error", message: authMessage(error) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setBusy(true);
+    setStatus({ kind: "idle", message: "Opening Google sign in..." });
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithPopup(auth, googleProvider);
+      setStatus({ kind: "success", message: "Signed in with Google. Your account is ready." });
+      window.location.assign("/");
     } catch (error) {
       setStatus({ kind: "error", message: authMessage(error) });
     } finally {
@@ -177,6 +208,16 @@ export default function LoginPage() {
               </label>
 
               <button className="authSubmit" disabled={busy} type="submit">{submitLabel}</button>
+              <div className="authDivider"><span>or</span></div>
+              <button className="googleButton" disabled={busy} onClick={handleGoogleSignIn} type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.2Z" />
+                  <path d="M12 22c2.7 0 5-1 6.6-2.6l-3.2-2.5c-.9.6-2 .9-3.4.9a5.8 5.8 0 0 1-5.5-4H3.2v2.6A10 10 0 0 0 12 22Z" />
+                  <path d="M6.5 13.8a6 6 0 0 1 0-3.6V7.6H3.2a10 10 0 0 0 0 8.8l3.3-2.6Z" />
+                  <path d="M12 6.2c1.5 0 2.8.5 3.8 1.5l2.9-2.9A9.8 9.8 0 0 0 12 2a10 10 0 0 0-8.8 5.6l3.3 2.6A5.8 5.8 0 0 1 12 6.2Z" />
+                </svg>
+                Continue with Google
+              </button>
               <button className="resetButton" disabled={busy} onClick={handleReset} type="button">Send password reset</button>
             </form>
           )}
